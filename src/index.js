@@ -2,7 +2,8 @@ import amqplib from 'amqplib/callback_api'
 import dotenv from 'dotenv'
 
 dotenv.config()
-amqplib.connect(process.env.RABBITMQ_URL, function (error0, connection) {
+
+const receive = (error0, connection) => {
   if (error0) {
     throw error0
   }
@@ -11,13 +12,66 @@ amqplib.connect(process.env.RABBITMQ_URL, function (error0, connection) {
       throw error1
     }
     var queue = 'hello'
-    var msg = 'Hello world'
-
     channel.assertQueue(queue, {
       durable: false,
     })
 
-    channel.sendToQueue(queue, Buffer.from(msg))
-    console.log(' [x] Sent %s', msg)
+    console.log(' [*] Waiting for messages in %s. To exit press CTRL+C', queue)
+
+    channel.consume(
+      queue,
+      function (msg) {
+        console.log(' [x] Received %s', msg.content.toString())
+      },
+      {
+        noAck: true,
+      }
+    )
   })
-})
+  connection.createChannel(function (error1, channel2) {
+    if (error1) {
+      throw error1
+    }
+    const queueTodo = 'todo'
+    channel2.assertQueue(queueTodo, {
+      durable: false,
+    })
+    console.log(' [*] Waiting for messages in %s. To exit press CTRL+C', queueTodo)
+
+    channel2.consume(
+      queueTodo,
+      function (msg) {
+        console.log(' [x] Received %s', msg.content.toString())
+        var result = JSON.parse(msg.content.toString())
+        console.log(result)
+      },
+      {
+        noAck: true,
+      }
+    )
+  })
+  connection.createChannel(function (error1, channel3) {
+    if (error1) {
+      throw error1
+    }
+    const queueMail = 'mail'
+    channel3.assertQueue(queueMail, {
+      durable: false,
+    })
+    console.log(' [*] Waiting for messages in %s. To exit press CTRL+C', queueMail)
+
+    channel3.consume(
+      queueMail,
+      function (msg) {
+        console.log(' [x] Received %s', msg.content.toString())
+        var result = JSON.parse(msg.content.toString())
+        console.log(result)
+      },
+      {
+        noAck: true,
+      }
+    )
+  })
+}
+
+amqplib.connect(process.env.RABBITMQ_URL, receive)
